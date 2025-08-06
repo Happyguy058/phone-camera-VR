@@ -2,7 +2,7 @@
 <html lang="nl">
 <head>
   <meta charset="UTF-8">
-  <title>VR Camera</title>
+  <title>VR Camera Fullscreen</title>
   <style>
     html, body {
       margin: 0;
@@ -18,10 +18,26 @@
       width: 50vw;
       height: 100vh;
       object-fit: cover;
+      background: #000;
+    }
+    #fullscreen-btn {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 10;
+      padding: 10px 20px;
+      background: rgba(255, 255, 255, 0.2);
+      border: 1px solid white;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 8px;
     }
   </style>
 </head>
 <body>
+
+  <button id="fullscreen-btn">Fullscreen</button>
   <video id="video1" autoplay playsinline muted></video>
   <video id="video2" autoplay playsinline muted></video>
 
@@ -29,12 +45,9 @@
     async function startCamera() {
       try {
         const constraints = {
-          video: {
-            facingMode: "environment"
-          },
+          video: { facingMode: "environment" },
           audio: false
         };
-
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
         document.getElementById("video1").srcObject = stream;
         document.getElementById("video2").srcObject = stream;
@@ -44,7 +57,28 @@
       }
     }
 
+    function requestFullscreen() {
+      const body = document.documentElement;
+      if (body.requestFullscreen) {
+        body.requestFullscreen();
+      } else if (body.webkitRequestFullscreen) {
+        body.webkitRequestFullscreen();
+      } else if (body.msRequestFullscreen) {
+        body.msRequestFullscreen();
+      }
+    }
+
+    document.getElementById("fullscreen-btn").addEventListener("click", () => {
+      requestFullscreen();
+    });
+
+    // Optioneel: fullscreen starten bij eerste klik ergens op de pagina
+    document.body.addEventListener("click", () => {
+      requestFullscreen();
+    }, { once: true });
+
     startCamera();
   </script>
+
 </body>
 </html>
