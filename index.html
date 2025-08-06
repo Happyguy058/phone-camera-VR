@@ -1,84 +1,65 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-  <meta charset="UTF-8">
-  <title>VR Camera Fullscreen</title>
+  <meta charset="utf-8">
+  <title>AR Hand Tracking VR Passthrough</title>
   <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      background: black;
-      display: flex;
-      flex-direction: row;
-      overflow: hidden;
-      height: 100vh;
-      width: 100vw;
-    }
-    video {
-      width: 50vw;
-      height: 100vh;
-      object-fit: cover;
-      background: #000;
-    }
-    #fullscreen-btn {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      z-index: 10;
-      padding: 10px 20px;
-      background: rgba(255, 255, 255, 0.2);
-      border: 1px solid white;
-      color: white;
-      font-size: 16px;
-      cursor: pointer;
-      border-radius: 8px;
-    }
+    body { margin:0; overflow:hidden; background:black; }
+    canvas, video { position:absolute; top:0; left:0; width:100%; height:100%; }
   </style>
 </head>
 <body>
-
-  <button id="fullscreen-btn">Fullscreen</button>
-  <video id="video1" autoplay playsinline muted></video>
-  <video id="video2" autoplay playsinline muted></video>
-
+  <video id="video" autoplay playsinline muted style="display:none"></video>
+  <canvas id="handsCanvas"></canvas>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r152/three.min.js"></script>
   <script>
-    async function startCamera() {
-      try {
-        const constraints = {
-          video: { facingMode: "environment" },
-          audio: false
-        };
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
-        document.getElementById("video1").srcObject = stream;
-        document.getElementById("video2").srcObject = stream;
-      } catch (err) {
-        alert("Camera werkt niet: " + err.message);
-        console.error(err);
-      }
+  // Setup video + hands
+  const videoEl = document.getElementById('video');
+  const handsCanvas = document.getElementById('handsCanvas');
+  const ctx = handsCanvas.getContext('2d');
+  handsCanvas.width = window.innerWidth;
+  handsCanvas.height = window.innerHeight;
+
+  const hands = new Hands({locateFile: f=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`});
+  hands.setOptions({maxNumHands:1,minDetectionConfidence:0.7,minTrackingConfidence:0.5});
+  hands.onResults(results=>{
+    ctx.clearRect(0,0,handsCanvas.width,handsCanvas.height);
+    ctx.drawImage(results.image,0,0,handsCanvas.width,handsCanvas.height);
+    if (results.multiHandLandmarks) {
+      const lm = results.multiHandLandmarks[0][8]; // vingerpunt
+      followFinger(lm.x * handsCanvas.width, lm.y * handsCanvas.height);
     }
+  });
 
-    function requestFullscreen() {
-      const body = document.documentElement;
-      if (body.requestFullscreen) {
-        body.requestFullscreen();
-      } else if (body.webkitRequestFullscreen) {
-        body.webkitRequestFullscreen();
-      } else if (body.msRequestFullscreen) {
-        body.msRequestFullscreen();
-      }
-    }
+  const camera = new Camera(videoEl, {onFrame: async ()=>{await hands.send({image:videoEl});},width:640,height:480});
+  camera.start();
 
-    document.getElementById("fullscreen-btn").addEventListener("click", () => {
-      requestFullscreen();
-    });
+  // Three.js scène voor 3D object
+  const scene = new THREE.Scene();
+  const camera3 = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.01, 10);
+  camera3.position.z = 1;
+  const renderer = new THREE.WebGLRenderer({alpha:true});
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+  const geometry = new THREE.SphereGeometry(0.1,32,32);
+  const material = new THREE.MeshNormalMaterial();
+  const sphere = new THREE.Mesh(geometry, material);
+  scene.add(sphere);
 
-    // Optioneel: fullscreen starten bij eerste klik ergens op de pagina
-    document.body.addEventListener("click", () => {
-      requestFullscreen();
-    }, { once: true });
+  function followFinger(x, y) {
+    // Zet bereik van scherm naar -0.5…0.5 → wereldruimte
+    const nx = (x/window.innerWidth - 0.5) * 1;
+    const ny = -(y/window.innerHeight - 0.5) * 1;
+    sphere.position.set(nx, ny, 0);
+  }
 
-    startCamera();
+  function animate(){
+    requestAnimationFrame(animate);
+    renderer.render(scene, camera3);
+  }
+  animate();
   </script>
-
 </body>
 </html>
