@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <title>VR Camera</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: black;
+      display: flex;
+      flex-direction: row;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+    }
+    video {
+      width: 50vw;
+      height: 100vh;
+      object-fit: cover;
+    }
+  </style>
+</head>
+<body>
+  <video id="video1" autoplay playsinline muted></video>
+  <video id="video2" autoplay playsinline muted></video>
+
+  <script>
+    async function startCamera() {
+      try {
+        const constraints = {
+          video: {
+            facingMode: "environment"
+          },
+          audio: false
+        };
+
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        document.getElementById("video1").srcObject = stream;
+        document.getElementById("video2").srcObject = stream;
+      } catch (err) {
+        alert("Camera werkt niet: " + err.message);
+        console.error(err);
+      }
+    }
+
+    startCamera();
+  </script>
+</body>
+</html>
